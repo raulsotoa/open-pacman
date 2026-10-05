@@ -218,7 +218,7 @@ function resetPositions( game ) {
     g.x = GHOST_STARTS[ i ].x;
     g.y = GHOST_STARTS[ i ].y;
     g.dir = 'up';
-    g.exitTimer = 0;
+    // SPEC 02: no se toca exitTimer; los ya liberados no esperan de nuevo.
   } );
 }
 
