@@ -109,6 +109,17 @@ function movePacman( game ) {
       game.score += 10;
       game.dotsRemaining--;
     }
+    // Comer power pellet (SPEC 03): activa/reinicia el modo asustado.
+    if ( grid[ p.y ][ p.x ] === 4 ) {
+      grid[ p.y ][ p.x ] = 0;
+      game.dotsRemaining--;
+      game.frightTimer = FRIGHT_DURATION;
+      game.ghostsEaten = 0;
+      for ( const g of game.ghosts ) {
+        g.frightened = true;
+        g.dir = OPPOSITE[ g.dir ] || g.dir;
+      }
+    }
     // Si no puede seguir, se detiene en la celda.
     if ( !canMove( grid, p.x, p.y, p.dir, 'pacman' ) ) return;
   }
