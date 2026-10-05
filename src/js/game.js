@@ -249,8 +249,29 @@ function update( game ) {
   movePacman( game );
   game.ghosts.forEach( ( g ) => moveGhost( game, g ) );
 
-  for ( const g of game.ghosts ) {
+  // Expirar el modo asustado (SPEC 03): 1/60 por frame, como exitTimer.
+  if ( game.frightTimer > 0 ) {
+    game.frightTimer -= 1 / 60;
+    if ( game.frightTimer <= 0 ) {
+      game.frightTimer = 0;
+      game.ghostsEaten = 0;
+      for ( const g of game.ghosts ) g.frightened = false;
+    }
+  }
+
+  for ( let i = 0; i < game.ghosts.length; i++ ) {
+    const g = game.ghosts[ i ];
     if ( collides( game.pacman, g ) ) {
+      // Fantasma asustado: se come por combo y reaparece normal en su spawn.
+      if ( g.frightened && game.frightTimer > 0 ) {
+        game.score += FRIGHT_POINTS[ game.ghostsEaten ] || 1600;
+        game.ghostsEaten = Math.min( game.ghostsEaten + 1, FRIGHT_POINTS.length - 1 );
+        g.x = GHOST_STARTS[ i ].x;
+        g.y = GHOST_STARTS[ i ].y;
+        g.dir = 'up';
+        g.frightened = false;
+        continue;
+      }
       game.lives--;
       if ( game.lives <= 0 ) {
         game.state = 'lost';
