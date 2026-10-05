@@ -66,14 +66,21 @@ function drawDoor( ctx, grid ) {
   ctx.stroke();
 }
 
-function drawDots( ctx, grid ) {
-  ctx.fillStyle = DOT_COLOR;
+function drawDots( ctx, grid, frame ) {
   for ( let y = 0; y < grid.length; y++ ) {
     for ( let x = 0; x < grid[ 0 ].length; x++ ) {
-      if ( grid[ y ][ x ] !== 2 ) continue;
+      const v = grid[ y ][ x ];
+      if ( v !== 2 && v !== 4 ) continue;
       const { cx, cy } = cellCenter( x, y );
+      ctx.fillStyle = DOT_COLOR;
       ctx.beginPath();
-      ctx.arc( cx, cy, 2.5, 0, Math.PI * 2 );
+      if ( v === 4 ) {
+        // Power pellet (SPEC 03): grande con parpadeo suave.
+        const r = 6 + Math.sin( ( frame || 0 ) * 0.15 ) * 1;
+        ctx.arc( cx, cy, r, 0, Math.PI * 2 );
+      } else {
+        ctx.arc( cx, cy, 2.5, 0, Math.PI * 2 );
+      }
       ctx.fill();
     }
   }
@@ -106,7 +113,7 @@ function drawGhost( ctx, g, color ) {
   const left = cx - r;
   const right = cx + r;
 
-  ctx.fillStyle = color;
+  ctx.fillStyle = g.frightened ? '#2121ff' : color;
   ctx.beginPath();
   ctx.arc( cx, cy - 1, r, Math.PI, 0, false ); // cabeza
   ctx.lineTo( right, bottom );
@@ -127,6 +134,8 @@ function drawGhost( ctx, g, color ) {
     ctx.beginPath();
     ctx.arc( cx + off, cy - 1, 3, 0, Math.PI * 2 );
     ctx.fill();
+    // Asustado (SPEC 03): ojos blancos sin pupila.
+    if ( g.frightened ) continue;
     ctx.fillStyle = '#0000bb';
     ctx.beginPath();
     ctx.arc( cx + off + ex, cy - 1 + ey, 1.5, 0, Math.PI * 2 );
@@ -156,7 +165,7 @@ function draw( ctx, game, frame ) {
 
   drawWalls( ctx, grid );
   drawDoor( ctx, grid );
-  drawDots( ctx, grid );
+  drawDots( ctx, grid, frame );
   drawPacman( ctx, game.pacman, frame );
   game.ghosts.forEach( ( g, i ) => drawGhost( ctx, g, GHOST_COLORS[ i ] || '#ff0000' ) );
   drawHUD( ctx, game, W );
