@@ -12,6 +12,9 @@ const OPPOSITE = { left: 'right', right: 'left', up: 'down', down: 'up' };
 
 const PACMAN_SPEED = 0.125; // 1/8 celda/frame -> alinea cada 8 frames
 const GHOST_SPEED = 0.1;    // 1/10 celda/frame
+const GHOST_FRIGHT_SPEED = 0.06; // fantasmas asustados, mas lentos (SPEC 03)
+const FRIGHT_DURATION = 10; // segundos de modo asustado (SPEC 03)
+const FRIGHT_POINTS = [ 200, 400, 800, 1600 ]; // combo por ventana (SPEC 03)
 
 // Crea una partida nueva. Copia MAZE (pristino) a game.grid para poder comer
 // dots sin destruir el original, y reiniciar.
@@ -21,13 +24,15 @@ function createGame() {
   grid[ PACMAN_START.y ][ PACMAN_START.x ] = 0;
 
   let dots = 0;
-  for ( const row of grid ) for ( const v of row ) if ( v === 2 ) dots++;
+  for ( const row of grid ) for ( const v of row ) if ( v === 2 || v === 4 ) dots++;
 
   return {
     state: 'start',
     score: 0,
     lives: 3,
     dotsRemaining: dots,
+    frightTimer: 0,
+    ghostsEaten: 0,
     grid,
     pacman: {
       x: PACMAN_START.x,
@@ -45,6 +50,7 @@ function createGame() {
       exitDelay: g.exitDelay || 0,
       exitTimer: 0,
       corner: g.corner,
+      frightened: false,
     } ) ),
   };
 }
