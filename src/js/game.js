@@ -42,6 +42,9 @@ function createGame() {
       dir: 'up',
       speed: GHOST_SPEED,
       kind: g.kind,
+      exitDelay: g.exitDelay || 0,
+      exitTimer: 0,
+      corner: g.corner,
     } ) ),
   };
 }
@@ -110,9 +113,33 @@ function movePacman( game ) {
   wrapTunnel( p, width );
 }
 
+function ghostTarget( game, g ) {
+  const p = game.pacman;
+  const px = Math.round( p.x );
+  const py = Math.round( p.y );
+  const pd = DIRS[ p.dir ] || { x: 0, y: 0 };
+
+  if ( g.kind === 'pinky' ) {
+    return { x: px + pd.x * 4, y: py + pd.y * 4 };
+  }
+  if ( g.kind === 'inky' ) {
+    const pivot = { x: px + pd.x * 2, y: py + pd.y * 2 };
+    const blinky = game.ghosts.find( ( o ) => o.kind === 'blinky' );
+    const bx = blinky ? Math.round( blinky.x ) : px;
+    const by = blinky ? Math.round( blinky.y ) : py;
+    return { x: pivot.x + ( pivot.x - bx ), y: pivot.y + ( pivot.y - by ) };
+  }
+  if ( g.kind === 'clyde' ) {
+    const dist = Math.abs( g.x - p.x ) + Math.abs( g.y - p.y );
+    if ( dist < 8 && g.corner ) return { x: g.corner.x, y: g.corner.y };
+    return { x: px, y: py };
+  }
+  // blinky y cualquier otro: persecucion directa.
+  return { x: px, y: py };
+}
+
 function decideGhost( game, g ) {
   const grid = game.grid;
-  const p = game.pacman;
 
   const options = Object.keys( DIRS ).filter(
     ( dir ) => dir !== OPPOSITE[ g.dir ] && canMove( grid, g.x, g.y, dir, 'ghost' )
@@ -120,35 +147,58 @@ function decideGhost( game, g ) {
   // Sin salida (callejon): permitir el giro de 180.
   const choices = options.length ? options : [ '' + OPPOSITE[ g.dir ] ];
 
-  if ( g.kind === 'hunter' ) {
-    const px = Math.round( p.x );
-    const py = Math.round( p.y );
-    let best = choices[ 0 ];
-    let bestDist = Infinity;
-    for ( const dir of choices ) {
-      const d = DIRS[ dir ];
-      const nx = g.x + d.x;
-      const ny = g.y + d.y;
-      const dist = Math.abs( nx - px ) + Math.abs( ny - py );
-      if ( dist < bestDist ) {
-        bestDist = dist;
-        best = dir;
-      }
-    }
-    g.dir = best;
-  } else {
+  if ( g.kind === 'random' ) {
     g.dir = choices[ Math.floor( Math.random() * choices.length ) ];
+    return;
   }
+
+  const t = ghostTarget( game, g );
+  let best = choices[ 0 ];
+  let bestDist = Infinity;
+  for ( const dir of choices ) {
+    const d = DIRS[ dir ];
+    const nx = g.x + d.x;
+    const ny = g.y + d.y;
+    const dist = Math.abs( nx - t.x ) + Math.abs( ny - t.y );
+    if ( dist < bestDist ) {
+      bestDist = dist;
+      best = dir;
+    }
+  }
+  g.dir = best;
+}
+
+// El corral: interior + puerta (x 11-16, y 12-15).
+function inPen( g ) {
+  const rx = Math.round( g.x );
+  const ry = Math.round( g.y );
+  return rx >= 11 && rx <= 16 && ry >= 12 && ry <= 15;
 }
 
 function moveGhost( game, g ) {
   const grid = game.grid;
   const width = grid[ 0 ].length;
 
+  // Retenido en el corral: balanceo vertical hasta vencer el timer (1/60 por frame).
+  if ( inPen( g ) && g.exitTimer < ( g.exitDelay || 0 ) ) {
+    g.exitTimer += 1 / 60;
+    if ( g.dir !== 'up' && g.dir !== 'down' ) g.dir = 'up';
+    const d = DIRS[ g.dir ];
+    const ny = g.y + d.y * g.speed;
+    if ( ny < 13.5 || ny > 14.5 ) g.dir = g.dir === 'up' ? 'down' : 'up';
+    else g.y = ny;
+    return;
+  }
+
   if ( aligned( g.x ) && aligned( g.y ) ) {
     g.x = Math.round( g.x );
     g.y = Math.round( g.y );
     decideGhost( game, g );
+    // Timer vencido dentro del corral: centrarse bajo la puerta y salir hacia arriba.
+    if ( inPen( g ) ) {
+      const rx = Math.round( g.x );
+      g.dir = rx < 13 ? 'right' : rx > 14 ? 'left' : 'up';
+    }
     if ( !canMove( grid, g.x, g.y, g.dir, 'ghost' ) ) return;
   }
 
@@ -168,6 +218,7 @@ function resetPositions( game ) {
     g.x = GHOST_STARTS[ i ].x;
     g.y = GHOST_STARTS[ i ].y;
     g.dir = 'up';
+    g.exitTimer = 0;
   } );
 }
 
