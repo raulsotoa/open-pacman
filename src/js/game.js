@@ -164,7 +164,7 @@ function decideGhost( game, g ) {
   // Sin salida (callejon): permitir el giro de 180.
   const choices = options.length ? options : [ '' + OPPOSITE[ g.dir ] ];
 
-  if ( g.kind === 'random' ) {
+  if ( g.kind === 'random' || g.frightened ) {
     g.dir = choices[ Math.floor( Math.random() * choices.length ) ];
     return;
   }
@@ -219,9 +219,11 @@ function moveGhost( game, g ) {
     if ( !canMove( grid, g.x, g.y, g.dir, 'ghost' ) ) return;
   }
 
+  // Fantasmas asustados (SPEC 03): mas lentos fuera del corral.
+  const speed = g.frightened ? GHOST_FRIGHT_SPEED : g.speed;
   const d = DIRS[ g.dir ];
-  g.x += d.x * g.speed;
-  g.y += d.y * g.speed;
+  g.x += d.x * speed;
+  g.y += d.y * speed;
   wrapTunnel( g, width );
 }
 
